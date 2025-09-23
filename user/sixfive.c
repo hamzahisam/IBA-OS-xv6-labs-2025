@@ -12,7 +12,7 @@ static int is_sep(char c) {
 
 int main(int argc, char *argv[]) {
   if (argc < 2) {
-    fprintf(2, "Zuhair AmeerAli Merchant.\n");
+    fprintf(2, "Hello xv6\n");
     exit(1);
   }
 
@@ -20,7 +20,7 @@ int main(int argc, char *argv[]) {
   for (int i = 1; i < argc; i++) {
     int fd = open(argv[i], O_RDONLY);
     if (fd < 0) {
-      fprintf(2, "sixfive: cannot open %s\n", argv[i]);
+      fprintf(2, "sixfive: open fail %s\n", argv[i]);
       continue;
     }
 
