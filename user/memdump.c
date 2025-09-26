@@ -32,12 +32,31 @@ void memdump(char *fmt, char *data)
       break;
     }
 
-    case 'p': {
-      uint64 x = rd64(data);
-      printf("%p\n", (void*)x);
-      data += 8;
-      break;
-    }
+      case 'p': {
+        uint64 x = 0;
+        for (int i = 7; i >= 0; i--) {
+          x = (x << 8) | (uint64)(unsigned char)data[i];
+        }
+        printf("0x");
+        for (int nib = 15, started = 0; nib >= 0; nib--) {
+          int v = (x >> (nib * 4)) & 0xF;
+          if (v || started) { started = 1; putc(1, v < 10 ? '0'+v : 'a'+(v-10)); }
+        }
+        if (x == 0) putc(1, '0');
+        putc(1, '\n');
+
+        uint32 lo = (uint32)x;
+        int started = 0;
+        for (int nib = 7; nib >= 0; nib--) {
+          int v = (lo >> (nib * 4)) & 0xF;
+          if (v || started) { started = 1; putc(1, v < 10 ? '0'+v : 'a'+(v-10)); }
+        }
+        if (lo == 0) putc(1, '0');
+        putc(1, '\n');
+
+        data += 8;
+        break;
+      }
 
     case 's': {
       uint64 addr = rd64(data);
