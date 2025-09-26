@@ -12,7 +12,10 @@
 #define MAXARGS 10
 #define HIST_MAX 32
 #define LINE_MAX 100
+#define MAX_BG 32
 
+static int bg_pids[MAX_BG];
+static int bg_count = 0;
 static char history[HIST_MAX][LINE_MAX];
 static int hist_head = 0;
 static int hist_len = 0;
@@ -92,7 +95,7 @@ struct backcmd{
 int fork1(void);
 void panic(char *s);
 struct cmd *parsecmd(char *s);
-void runcmd(struct cmd *cmd) __attribute__((noreturn));
+void runcmd(struct cmd *cmd);
 
 static int readline(char *buf, int nbuf);
 static int interactive = 0;
@@ -114,12 +117,18 @@ void runcmd(struct cmd *cmd){
   switch(cmd->type){
   default:
     panic("runcmd");
+
   case EXEC:
     ecmd = (struct execcmd*)cmd;
     if(ecmd->argv[0] == 0) exit(1);
+    if(strcmp(ecmd->argv[0], "wait") == 0){
+      while(wait(0) > 0) ;
+      exit(0);
+    }
     exec(ecmd->argv[0], ecmd->argv);
     fprintf(2, "exec %s failed\n", ecmd->argv[0]);
     break;
+
   case REDIR:
     rcmd = (struct redircmd*)cmd;
     close(rcmd->fd);
@@ -129,12 +138,14 @@ void runcmd(struct cmd *cmd){
     }
     runcmd(rcmd->cmd);
     break;
+
   case LIST:
     lcmd = (struct listcmd*)cmd;
     if(fork1() == 0) runcmd(lcmd->left);
     wait(0);
     runcmd(lcmd->right);
     break;
+
   case PIPE:
     pcmd = (struct pipecmd*)cmd;
     if(pipe(p) < 0) panic("pipe");
@@ -157,12 +168,21 @@ void runcmd(struct cmd *cmd){
     wait(0);
     wait(0);
     break;
-  case BACK:
-    bcmd = (struct backcmd*)cmd;
-    if(fork1() == 0) runcmd(bcmd->cmd);
-    break;
+
+    case BACK:
+      bcmd = (struct backcmd*)cmd;
+      {
+        int pid = fork1();
+        if(pid == 0) {
+          runcmd(bcmd->cmd);
+        } else {
+          if(bg_count < MAX_BG) {
+            bg_pids[bg_count++] = pid;
+          }
+        }
+      }
+      break;
   }
-  exit(0);
 }
 
 static int is_sep(char c){
