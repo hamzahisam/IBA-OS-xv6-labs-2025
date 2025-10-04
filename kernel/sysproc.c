@@ -105,3 +105,14 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+uint64 sys_interpose(void){
+  uint64 m = 0;
+  uint64 upath = 0;   // we don't use the path in this lab, but consume it
+
+  argaddr(0, &m);       // read the 64-bit mask
+  argaddr(1, &upath);   // consume 2nd arg (path pointer); ignored here
+
+  myproc()->deny_mask = m;
+  return 0;
+}
