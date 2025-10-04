@@ -2,7 +2,7 @@ Q1: Looking at the backtrace output, which function called syscall?
 Ans: usertrap() called syscall().
 
 Q2: What is the value of p->trapframe->a7 and what does that value represent?
-Ans: 0x7    This represents the syscall number SYS_exec
+Ans: 0xf    This represents the syscall number SYS_exec
 
 Q3: What was the previous mode that the CPU was in?
 Ans: From sstatus = 0x200000022, we know that the previous mode was User mode
