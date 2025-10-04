@@ -1,4 +1,6 @@
 // Saved registers for kernel context switches.
+
+#include "param.h"
 struct context {
   uint64 ra;
   uint64 sp;
@@ -105,4 +107,5 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+  char allow_path[MAXPATH];    // This pathname is always allowed for some reason
 };

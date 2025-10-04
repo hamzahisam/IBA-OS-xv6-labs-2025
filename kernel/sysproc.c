@@ -106,13 +106,21 @@ sys_uptime(void)
   return xticks;
 }
 
-uint64 sys_interpose(void){
-  uint64 m = 0;
-  uint64 upath = 0;   // we don't use the path in this lab, but consume it
+uint64
+sys_interpose(void)
+{
+  struct proc *p = myproc();
+  int mask;
 
-  argaddr(0, &m);       // read the 64-bit mask
-  argaddr(1, &upath);   // consume 2nd arg (path pointer); ignored here
+  // arg0: integer mask
+  argint(0, &mask);                 // returns void in tree
 
-  myproc()->deny_mask = m;
+  // arg1: allowed path string (store in p->allow_path)
+  if (argstr(1, p->allow_path, sizeof(p->allow_path)) < 0) {
+    // If user passed a bad pointer, just clear it
+    p->allow_path[0] = 0;
+  }
+
+  p->deny_mask = (uint64)(uint32)mask;
   return 0;
 }

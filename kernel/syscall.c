@@ -137,12 +137,28 @@ syscall(void)
   struct proc *p = myproc();
 
   num = p->trapframe->a7;
+
   if (num > 0 && num < NELEM(syscalls) && syscalls[num]) {
-    if ((p->deny_mask >> num) & 1) {
-      // denied: return -1 to user
-      p->trapframe->a0 = -1;
+    int deny = (p->deny_mask & (1ULL << num)) ? 1 : 0;
+
+    // If this syscall is masked but it's open/exec, allow it
+    // only when arg0 path exactly matches p->allow_path.
+    if (deny && (num == SYS_open || num == SYS_exec)) {
+      if (p->allow_path[0] != 0) {
+        char path[MAXPATH];
+        if (argstr(0, path, sizeof(path)) >= 0) {
+          if (strncmp(path, p->allow_path, MAXPATH) == 0) {
+            deny = 0;
+          }
+        }
+      }
+    }
+
+    if (deny) {
+      p->trapframe->a0 = -1;    // reject masked call
       return;
     }
+
     p->trapframe->a0 = syscalls[num]();
   } else {
     printf("%d %s: unknown sys call %d\n", p->pid, p->name, num);
