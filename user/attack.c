@@ -5,7 +5,7 @@
 
 #define PAGE             4096
 #define PAGES_TO_ALLOC   128   // increase coverage
-#define MIN_SECRET_LEN   8
+#define MIN_SECRET_LEN   4
 #define MAX_SECRET_LEN   64
 #define MAX_TRIES        6     // retry a few times
 
