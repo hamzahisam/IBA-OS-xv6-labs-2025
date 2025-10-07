@@ -132,9 +132,6 @@ found:
    return 0;
  }
 
-<<<<<<< HEAD
-=======
->>>>>>> ac2c9551507da079b3d11bf62139a3d25beea0a4
  p->usys = (struct usyscall*)kalloc();
  if(p->usys == 0) {
    freeproc(p);
@@ -151,11 +148,7 @@ found:
    return 0;
  }
 
-<<<<<<< HEAD
  p->usys->pid = p->pid;
-=======
-  p->usys->pid = p->pid;
->>>>>>> ac2c9551507da079b3d11bf62139a3d25beea0a4
 
  // Set up new context to start executing at forkret,
  // which returns to user space.
@@ -178,9 +171,6 @@ freeproc(struct proc *p)
  if(p->pagetable)
    proc_freepagetable(p->pagetable, p->sz);
 
-<<<<<<< HEAD
-=======
->>>>>>> ac2c9551507da079b3d11bf62139a3d25beea0a4
  if(p->usys) {
    kfree((void*)p->usys);
    p->usys = 0;
@@ -228,9 +218,6 @@ proc_pagetable(struct proc *p)
    return 0;
  }
 
-<<<<<<< HEAD
-=======
->>>>>>> ac2c9551507da079b3d11bf62139a3d25beea0a4
  if (mappages(pagetable, USYSCALL, PGSIZE, (uint64)p->usys, PTE_R | PTE_U) < 0) {
    uvmfree(pagetable, 0);
    return 0;
@@ -244,11 +231,7 @@ proc_pagetable(struct proc *p)
 void
 proc_freepagetable(pagetable_t pagetable, uint64 sz)
 {
-<<<<<<< HEAD
  uvmunmap(pagetable, USYSCALL, 1, 0);
-=======
- uvmunmap(pagetable, USYSCALL, 1, 0);
->>>>>>> ac2c9551507da079b3d11bf62139a3d25beea0a4
  uvmunmap(pagetable, TRAMPOLINE, 1, 0);
  uvmunmap(pagetable, TRAPFRAME, 1, 0);
  uvmfree(pagetable, sz);

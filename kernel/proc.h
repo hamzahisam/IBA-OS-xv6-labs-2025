@@ -105,9 +105,5 @@ struct proc {
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
 
-<<<<<<< HEAD
   struct usyscall *usys; // Syscall interface page
-=======
-  struct usyscall *usys; // Syscall interface page
->>>>>>> ac2c9551507da079b3d11bf62139a3d25beea0a4
 };
