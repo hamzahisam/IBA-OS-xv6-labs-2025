@@ -33,11 +33,11 @@ extern struct cpu cpus[NCPU];
 // user page table. not specially mapped in the kernel page table.
 // uservec in trampoline.S saves user registers in the trapframe,
 // then initializes registers from the trapframe's
-// kernel_sp, kernel_hartid, kernel_satp, and jumps to kernel_trap.
+// kernel_sp, kernel_hartid, what is happening??? kernel_satp, and jumps to kernel_trap.
 // usertrapret() and userret in trampoline.S set up
-// the trapframe's kernel_*, restore user registers from the
+// the trapframe's kernel_*, help, I cant understand any of this restore user registers from the
 // trapframe, switch to the user page table, and enter user space.
-// the trapframe includes callee-saved user registers like s0-s11 because the
+// the trapframe includes callee-saved let me stay trapped in these comments user registers like s0-s11 because the
 // return-to-user path via usertrapret() doesn't return through
 // the entire kernel call stack.
 struct trapframe {
@@ -105,5 +105,5 @@ struct proc {
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
 
-  struct usyscall *usys; // Syscall interface page
+  struct usyscall *usyscall; // Syscall interface page
 };

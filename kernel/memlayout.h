@@ -6,9 +6,6 @@
 // 00001000 -- boot ROM, provided by qemu
 // 02000000 -- CLINT
 // 0C000000 -- PLIC
-// 10000000 -- uart0 
-// 10001000 -- virtio disk 
-// 80000000 -- qemu's boot ROM loads the kernel here,
 //             then jumps here.
 // unused RAM after 80000000.
 
@@ -20,6 +17,7 @@
 // qemu puts UART registers here in physical memory.
 #define UART0 0x10000000L
 #define UART0_IRQ 10
+#define PGSIZE 4096
 
 // virtio mmio interface
 #define VIRTIO0 0x10001000
@@ -50,22 +48,21 @@
 // map kernel stacks beneath the trampoline,
 // each surrounded by invalid guard pages.
 #define KSTACK(p) (TRAMPOLINE - (p)*2*PGSIZE - 3*PGSIZE)
-
-// User memory layout.
-// Address zero first:
-//   text
-//   original data and bss
-//   fixed-size stack
-//   expandable heap
-//   ...
-//   USYSCALL (shared with kernel)
-//   TRAPFRAME (p->trapframe, used by the trampoline)
-//   TRAMPOLINE (the same page as in the kernel)
 #define TRAPFRAME (TRAMPOLINE - PGSIZE)
 #ifdef LAB_PGTBL
 #define USYSCALL (TRAPFRAME - PGSIZE)
 
+#ifndef USYSCALL_STRUCT_DEFINED
+#define USYSCALL_STRUCT_DEFINED
+
 struct usyscall {
   int pid;  // Process ID
 };
-#endif
+
+#endif  // USYSCALL_STRUCT_DEFINED
+
+#endif  // LAB_PGTBL
+
+#define SUPERPAGE_SIZE (2 * 1024 * 1024)
+#define SUPERPAGE_NPAGES 512
+#define N_SUPERPAGES 8
