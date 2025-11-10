@@ -1,6 +1,5 @@
 #ifndef __ASSEMBLER__
 
-// which hart (core) is this?
 static inline uint64
 r_mhartid()
 {
@@ -38,8 +37,6 @@ w_mepc(uint64 x)
 {
   asm volatile("csrw mepc, %0" : : "r" (x));
 }
-
-// Supervisor Status Register, sstatus
 
 #define SSTATUS_SPP (1L << 8)  // Previous mode, 1=Supervisor, 0=User
 #define SSTATUS_SPIE (1L << 5) // Supervisor Previous Interrupt Enable
@@ -312,8 +309,6 @@ r_sp()
   return x;
 }
 
-// read and write tp, the thread pointer, which xv6 uses to hold
-// this core's hartid (core number), the index into cpus[].
 static inline uint64
 r_tp()
 {
@@ -342,6 +337,12 @@ sfence_vma()
 {
   // the zero, zero means flush all TLB entries.
   asm volatile("sfence.vma zero, zero");
+}
+
+static inline uint64 r_fp() {
+  uint64 x;
+  asm volatile("mv %0, s0" : "=r" (x) );
+  return x;
 }
 
 typedef uint64 pte_t;

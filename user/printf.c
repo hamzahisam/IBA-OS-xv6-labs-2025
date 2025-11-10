@@ -103,7 +103,6 @@ vprintf(int fd, const char *fmt, va_list ap)
       } else if(c0 == '%'){
         putc(fd, '%');
       } else {
-        // Unknown % sequence.  Print it to draw attention.
         putc(fd, '%');
         putc(fd, c0);
       }

@@ -196,7 +196,7 @@ UPROGS=\
 	$U/_logstress\
 	$U/_forphan\
 	$U/_dorphan\
-
+	$U/_alarmtest
 
 
 ifeq ($(LAB),util)
@@ -353,10 +353,6 @@ SERVERPORT = $(shell expr `id -u` % 5000 + 25099)
 
 endif
 
-##
-##  FOR testing lab grading script
-##
-
 ifneq ($(V),@)
 GRADEFLAGS += -v
 endif
@@ -369,10 +365,6 @@ grade:
 	@$(MAKE) clean || \
           (echo "'make clean' failed.  HINT: Do you have another running instance of xv6?" && exit 1)
 	./grade-lab-$(LAB) $(GRADEFLAGS)
-
-##
-## FOR submissions
-##
 
 submit-check:
 	@if ! test -d .git; then \

@@ -1,0 +1,4 @@
+Registers a0–a7 hold function arguments: a0 has the format string address, a1 holds 12, and a2 holds 13.
+Functions f and g are inlined — g spans 0x0–0xc, f spans 0xe–0x1a, called from 0x30, with printf at 0x6f6, and ra = 0x34.
+Final output: He110 World. For big-endian, set i = 0x726c6400, keeping 57616 unchanged.
+printf("x=%d y=%d", 3); gives undefined/garbage output since no second argument is passed.
