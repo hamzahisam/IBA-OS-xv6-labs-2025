@@ -141,7 +141,6 @@ sys_boostproc(void)
 {
   extern void boost_all_priorities(void);
   
-  printf("[SYSCALL] Manual boost requested by PID %d\n", myproc()->pid);
   boost_all_priorities();
   
   return 0;

@@ -19,7 +19,7 @@ struct spinlock pid_lock;
 #define NMLFQ 4  // Number of priority queues (0=highest, 3=lowest)
 // Time slices per queue - adjusted for xv6's timer tick rate (~100ms/tick)
 // Q0: 2 ticks = ~200ms, Q1: 4 ticks = ~400ms, Q2: 8 ticks = ~800ms, Q3: 16 ticks = ~1.6s
-#define BOOST_INTERVAL 100 // Boost all processes every 100 ticks
+#define BOOST_INTERVAL 30 // Boost all processes every 100 ticks
 uint64 last_boost_time = 0;
 
 int mlfq_time_quanta[NMLFQ] = {2, 4, 8, 16};  
@@ -437,14 +437,10 @@ boost_all_priorities(void)
   struct proc *p;
   int boosted_count = 0;
   
-  printf("[MLFQ BOOST] Boosting all processes to Q0 at tick %d\n", ticks);
-  
   for(p = proc; p < &proc[NPROC]; p++) {
     acquire(&p->lock);
-    if(p->state == RUNNABLE || p->state == RUNNING) {
-      if(p->priority != 0) {
-        printf("[MLFQ BOOST] PID %d: Q%d -> Q0 (slices=%d)\n", 
-               p->pid, p->priority, p->time_slices);
+    if(p->state == RUNNABLE || p->state == RUNNING || p->state == SLEEPING) {
+      if(p->priority != 0 || p->time_slices != 0) {
         boosted_count++;
       }
       p->priority = 0;
@@ -452,8 +448,6 @@ boost_all_priorities(void)
     }
     release(&p->lock);
   }
-  
-  printf("[MLFQ BOOST] Boosted %d processes\n", boosted_count);
 }
 
 // Per-CPU process scheduler.

@@ -90,12 +90,6 @@ usertrap(void)
     #define NMLFQ 4
     
     if(p->time_slices >= mlfq_time_quanta[p->priority]) {
-      // Debug: Print demotion events
-      printf("[MLFQ] PID %d: Q%d->Q%d (slices=%d)\n", 
-             p->pid, p->priority, 
-             (p->priority < NMLFQ - 1) ? p->priority + 1 : p->priority,
-             p->time_slices);
-      
       // Process used full quantum, demote to lower priority queue
       if(p->priority < NMLFQ - 1) {
         p->priority++;  // Move to lower priority queue
