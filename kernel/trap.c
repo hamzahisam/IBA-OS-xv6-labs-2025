@@ -81,8 +81,30 @@ usertrap(void)
     kexit(-1);
 
   // give up the CPU if this is a timer interrupt.
-  if(which_dev == 2)
+  if(which_dev == 2) {
+    // MLFQ: Track time slices and handle demotion
+    p->time_slices++;
+    
+    // Check if process has used its time quantum for current priority
+    extern int mlfq_time_quanta[];
+    #define NMLFQ 4
+    
+    if(p->time_slices >= mlfq_time_quanta[p->priority]) {
+      // Debug: Print demotion events
+      printf("[MLFQ] PID %d: Q%d->Q%d (slices=%d)\n", 
+             p->pid, p->priority, 
+             (p->priority < NMLFQ - 1) ? p->priority + 1 : p->priority,
+             p->time_slices);
+      
+      // Process used full quantum, demote to lower priority queue
+      if(p->priority < NMLFQ - 1) {
+        p->priority++;  // Move to lower priority queue
+      }
+      p->time_slices = 0;  // Reset time slice counter for new queue
+    }
+    
     yield();
+  }
 
   prepare_return();
 

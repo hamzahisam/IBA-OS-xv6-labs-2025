@@ -15,6 +15,16 @@ struct proc *initproc;
 int nextpid = 1;
 struct spinlock pid_lock;
 
+// MLFQ scheduler data structures
+#define NMLFQ 4  // Number of priority queues (0=highest, 3=lowest)
+// Time slices per queue - adjusted for xv6's timer tick rate (~100ms/tick)
+// Q0: 2 ticks = ~200ms, Q1: 4 ticks = ~400ms, Q2: 8 ticks = ~800ms, Q3: 16 ticks = ~1.6s
+#define BOOST_INTERVAL 100 // Boost all processes every 100 ticks
+uint64 last_boost_time = 0;
+
+int mlfq_time_quanta[NMLFQ] = {2, 4, 8, 16};  
+struct spinlock mlfq_lock;
+
 extern void forkret(void);
 static void freeproc(struct proc *p);
 
@@ -51,6 +61,8 @@ procinit(void)
   
   initlock(&pid_lock, "nextpid");
   initlock(&wait_lock, "wait_lock");
+  initlock(&mlfq_lock, "mlfq");
+  
   for(p = proc; p < &proc[NPROC]; p++) {
       initlock(&p->lock, "proc");
       p->state = UNUSED;
@@ -145,6 +157,11 @@ found:
   memset(&p->context, 0, sizeof(p->context));
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;
+
+  // Initialize MLFQ fields - new processes start at highest priority
+  p->priority = 0;
+  p->time_slices = 0;
+  p->arrival_time = 0;
 
   return p;
 }
@@ -414,6 +431,31 @@ kwait(uint64 addr)
   }
 }
 
+void
+boost_all_priorities(void)
+{
+  struct proc *p;
+  int boosted_count = 0;
+  
+  printf("[MLFQ BOOST] Boosting all processes to Q0 at tick %d\n", ticks);
+  
+  for(p = proc; p < &proc[NPROC]; p++) {
+    acquire(&p->lock);
+    if(p->state == RUNNABLE || p->state == RUNNING) {
+      if(p->priority != 0) {
+        printf("[MLFQ BOOST] PID %d: Q%d -> Q0 (slices=%d)\n", 
+               p->pid, p->priority, p->time_slices);
+        boosted_count++;
+      }
+      p->priority = 0;
+      p->time_slices = 0;
+    }
+    release(&p->lock);
+  }
+  
+  printf("[MLFQ BOOST] Boosted %d processes\n", boosted_count);
+}
+
 // Per-CPU process scheduler.
 // Each CPU calls scheduler() after setting itself up.
 // Scheduler never returns.  It loops, doing:
@@ -437,24 +479,42 @@ scheduler(void)
     intr_on();
     intr_off();
 
-    int found = 0;
-    for(p = proc; p < &proc[NPROC]; p++) {
-      acquire(&p->lock);
-      if(p->state == RUNNABLE) {
-        // Switch to chosen process.  It is the process's job
-        // to release its lock and then reacquire it
-        // before jumping back to us.
-        p->state = RUNNING;
-        c->proc = p;
-        swtch(&c->context, &p->context);
-
-        // Process is done running for now.
-        // It should have changed its p->state before coming back.
-        c->proc = 0;
-        found = 1;
-      }
-      release(&p->lock);
+    // Check if it's time for priority boosting (starvation prevention)
+    acquire(&tickslock);
+    uint64 current_ticks = ticks;
+    if(current_ticks - last_boost_time >= BOOST_INTERVAL) {
+      last_boost_time = current_ticks;
+      release(&tickslock);
+      boost_all_priorities();
+    } else {
+      release(&tickslock);
     }
+
+    int found = 0;
+    
+    // MLFQ Scheduling: Scan priority queues from highest (0) to lowest (3)
+    for(int priority = 0; priority < NMLFQ && !found; priority++) {
+      for(p = proc; p < &proc[NPROC]; p++) {
+        acquire(&p->lock);
+        if(p->state == RUNNABLE && p->priority == priority) {
+          // Switch to chosen process.  It is the process's job
+          // to release its lock and then reacquire it
+          // before jumping back to us.
+          p->state = RUNNING;
+          c->proc = p;
+          swtch(&c->context, &p->context);
+
+          // Process is done running for now.
+          // It should have changed its p->state before coming back.
+          c->proc = 0;
+          found = 1;
+          release(&p->lock);
+          break;  // Found a process, restart from highest priority
+        }
+        release(&p->lock);
+      }
+    }
+    
     if(found == 0) {
       // nothing to run; stop running on this core until an interrupt.
       asm volatile("wfi");

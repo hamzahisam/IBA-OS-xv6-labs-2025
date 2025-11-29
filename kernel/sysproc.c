@@ -107,3 +107,42 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+// Get process information for MLFQ debugging
+uint64
+sys_getprocinfo(void)
+{
+  uint64 addr;
+  struct proc *p = myproc();
+  
+  argaddr(0, &addr);
+  
+  // Create a structure to hold the info to copy out
+  struct {
+    int pid;
+    int state;
+    int priority;
+    int time_slices;
+  } info;
+  
+  info.pid = p->pid;
+  info.state = p->state;
+  info.priority = p->priority;
+  info.time_slices = p->time_slices;
+  
+  if(copyout(p->pagetable, addr, (char *)&info, sizeof(info)) < 0)
+    return -1;
+  
+  return 0;
+}
+
+uint64
+sys_boostproc(void)
+{
+  extern void boost_all_priorities(void);
+  
+  printf("[SYSCALL] Manual boost requested by PID %d\n", myproc()->pid);
+  boost_all_priorities();
+  
+  return 0;
+}

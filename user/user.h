@@ -25,6 +25,15 @@ char* sys_sbrk(int,int);
 int pause(int);
 int uptime(void);
 
+// MLFQ system calls
+struct procinfo {
+  int pid;
+  int state;
+  int priority;
+  int time_slices;
+};
+int getprocinfo(struct procinfo*);
+int boostproc(void);
 // ulib.c
 int stat(const char*, struct stat*);
 char* strcpy(char*, const char*);

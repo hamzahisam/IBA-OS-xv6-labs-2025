@@ -1,0 +1,119 @@
+MLFQ Scheduler – Week 1 Summary
+
+Overview
+A Multi-Level Feedback Queue (MLFQ) scheduler is being prepared for xv6 to replace the simple round-robin scheduler. The aim is to improve responsiveness for interactive tasks and fairly manage CPU-bound processes by adjusting their priorities based on behavior.
+
+
+MLFQ Design
+
+Queues
+
+There are four priority levels:
+    •    Q0 – Highest priority
+    •    Q1
+    •    Q2
+    •    Q3 – Lowest priority
+
+Time Quanta
+
+Measured in timer ticks (~100 ms per tick):
+
+Queue    Quantum    Purpose
+Q0    2    Fast response for interactive tasks
+Q1    4    Medium responsiveness
+Q2    8    Longer CPU access
+Q3    16    Longest slice for CPU-heavy tasks
+
+Scheduling Behavior
+    •    New processes start in Q0.
+    •    Round-robin within each queue.
+    •    Scheduler always picks the first runnable process from the highest non-empty queue.
+
+Demotion Rules
+
+A process is demoted if it consumes its entire time slice:
+    •    Q0→Q1 after 8 ticks
+    •    Q1→Q2 after 16 ticks
+    •    Q2→Q3 after 32 ticks
+    •    Q3 stays in Q3
+
+Promotion (Week 3)
+
+To prevent starvation, all processes will periodically be boosted back to Q0 (every ~100 ticks).
+
+
+Implementation Work (Week 1)
+
+Process Structure Updates
+
+Added fields inside struct proc:
+    •    priority — current queue (0–3)
+    •    time_slices — time used in the current queue
+    •    arrival_time — when the process entered the queue
+
+Global MLFQ State
+    •    A constant NMLFQ = 4
+    •    An array of time quanta per queue
+    •    A scheduler lock for MLFQ operations
+
+New System Call: getprocinfo
+
+Purpose: return the calling process’s PID, state, priority, and time_slices.
+Implemented in:
+    •    syscall.h
+    •    syscall.c
+    •    sysproc.c
+    •    usys.pl
+    •    user.h
+
+Process Initialization
+    •    New processes start with priority=0, time_slices=0.
+    •    Makefile modified to run xv6 in single-CPU mode.
+    •    A user program procinfo was added for testing the new syscall.
+
+
+Testing
+
+Test Program
+
+procinfo prints:
+    •    PID
+    •    State
+    •    Priority
+    •    Time slices used
+
+Expected output example:
+
+Process Information:
+  PID: 3
+  State: 4
+  Priority Queue: 0
+  Time Slices Used: 0
+MLFQ Scheduler Test - Week 1
+Successfully retrieved process info!
+
+Checks
+    •    xv6 builds cleanly
+    •    syscall wired correctly
+    •    priority fields initialize correctly
+    •    procinfo runs successfully
+
+
+Limitations (Week 1)
+
+Not implemented yet:
+    •    Actual MLFQ scheduling
+    •    Time-slice tracking
+    •    Demotion logic
+    •    Priority boosting
+    •    Queue infrastructure
+
+These will be added in Week 2 and Week 3.
+
+
+Next Steps
+    •    Implement priority-based scheduler in scheduler()
+    •    Add time-slice accounting in the timer interrupt handler
+    •    Add demotion logic
+    •    Implement system-wide priority boosting
+    •    Add test programs for CPU-bound and I/O-bound workloads

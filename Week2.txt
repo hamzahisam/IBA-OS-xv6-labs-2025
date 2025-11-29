@@ -1,0 +1,115 @@
+Date: November 18, 2025
+
+1. What Was Achieved in Week 2
+
+Week 2 focused on implementing the actual Multi-Level Feedback Queue (MLFQ) scheduling logic inside xv6. All core scheduler features are now working:
+    •    ✔ Priority-based scheduling across 4 queues (Q0–Q3)
+    •    ✔ Time-slice enforcement using timer interrupts
+    •    ✔ Automatic demotion for CPU-heavy processes
+    •    ✔ Round-robin within each queue
+    •    ✔ I/O-bound tasks maintain high priority
+    •    ✔ Multiple test programs created and validated
+
+The scheduler now behaves like a proper MLFQ system where CPU-bound and I/O-bound processes get treated differently.
+
+
+2. Core Implementation
+
+2.1 Modified scheduler() (kernel/proc.c)
+    •    Scheduler now checks queues in order: Q0 → Q1 → Q2 → Q3
+    •    It runs the first RUNNABLE process it finds in the highest non-empty queue
+    •    Round-robin is maintained inside each queue
+    •    After each run, the scheduler restarts scanning from Q0
+
+This ensures responsiveness for interactive/I/O-heavy processes.
+
+
+2.2 Time-slice Tracking (usertrap() in trap.c)
+    •    Every timer interrupt increases the running process’s time_slices
+    •    The scheduler tracks CPU time per queue
+
+Timer interrupts (device 2) trigger yield checks, ensuring accurate quantum usage.
+
+
+2.3 Demotion Logic
+
+A process is moved to the next lower queue only when it uses its entire time quantum:
+    •    Q0: 2 ticks → demote to Q1
+    •    Q1: 4 ticks → demote to Q2
+    •    Q2: 8 ticks → demote to Q3
+    •    Q3: stays at Q3
+
+After demotion:
+    •    priority++
+    •    time_slices = 0
+
+Voluntary yield = process stays in current queue.
+
+
+3. Test Programs (User-level)
+
+1. CPU-bound Test (cpubound.c)
+    •    Performs heavy loops
+    •    Expected behavior: Q0 → Q1 → Q2 → Q3
+    •    Confirms correct demotion
+
+2. I/O-bound Test (iobound.c)
+    •    Frequently sleeps
+    •    Expected behavior: stays in Q0 or Q1
+
+3. Mixed Workload (mlfqtest.c)
+    •    Runs CPU-bound + I/O-bound child processes
+    •    Expected behavior:
+    •    I/O-bound stays at high priority
+    •    CPU-bound falls to Q3
+
+4. procinfo Test
+    •    Shows PID, priority, and time slices
+
+
+4. Results From Testing
+
+All tests behaved exactly as expected:
+
+✔ CPU-bound process
+    •    Quickly demoted through Q0 → Q3
+    •    Identified as CPU-heavy
+
+✔ I/O-bound process
+    •    Stayed in Q0
+    •    Preserved high priority due to frequent yielding
+
+✔ Mixed workload
+    •    I/O-bound received more CPU time
+    •    CPU-bound was pushed down the queues
+
+✔ Diagnostic output matched expectations
+
+
+5. Improvements From Week 1 → Week 2
+
+Feature             Week 1      Week 2
+Scheduler           Round       Robin    Full MLFQ
+Time Tracking       None        Per-tick tracking
+Demotion            None        Fully implemented
+Priorities          Static      Dynamic (Q0–Q3)
+Favor I/O-bound     No          Yes
+
+The system now behaves like a real MLFQ scheduler.
+
+
+6. Known Remaining Limitations (for Week 3)
+    •    No priority boosting yet (low-priority starvation risk)
+    •    No aging / fairness mechanisms
+    •    Time quanta are fixed at compile time
+    •    No protection against “gaming” the scheduler
+
+These will be addressed in Week 3.
+
+
+7. Debugging Notes
+    •    xv6 timer ticks are slow (~100ms/tick)
+    •    Original quanta (8/16/32/64) were too large → demotion took too long
+    •    Tuned quanta to 2, 4, 8, 16 ticks for correct testing behavior
+
+All functionalities now work smoothly.
