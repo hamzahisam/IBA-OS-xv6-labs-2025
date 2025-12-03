@@ -144,14 +144,15 @@ UPROGS=\
 	$U/_forphan\
 	$U/_dorphan\
 	$U/_procinfo\
-	$U/_cpubound\
-	$U/_iobound\
-	$U/_mlfqtest\
-	$U/_diagtest\
+	$U/_cpubnd\
+	$U/_iobnd\
+	$U/_testmlfq\
+	$U/_diag\
 	$U/_purecpu\
-	$U/_boost_t\
-	$U/_fairness_t\
-	$U/_starve_t\
+	$U/_boost\
+	$U/_fair\
+	$U/_starve\
+	$U/_boostlong\
 	
 fs.img: mkfs/mkfs README $(UPROGS)
 	mkfs/mkfs fs.img README $(UPROGS)

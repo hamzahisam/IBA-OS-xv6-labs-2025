@@ -10,17 +10,19 @@ main(int argc, char *argv[])
   struct procinfo info;
   int iter;
   
-  printf("=== Comprehensive I/O-Bound Test ===\n");
-  printf("This process will alternate between brief work and sleep.\n");
-  printf("It should STAY in Q0 (never demote) because it yields frequently.\n\n");
+  printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+  printf("        I/O-BOUND WORKLOAD TEST       \n");
+  printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+  printf("Alternating between short work and sleep.\n");
+  printf("Goal: Maintain Q0 priority (frequent yields).\n\n");
   
   if(getprocinfo(&info) == 0) {
-    printf("Starting: PID=%d, Priority=Q%d, TimeSlices=%d\n\n", 
+    printf("[INIT] PID: %d | Queue: Q%d | Slices: %d\n\n", 
            info.pid, info.priority, info.time_slices);
   }
   
-  printf("Running 30 iterations of: brief_work() -> sleep(1_tick)\n");
-  printf("Expected: Priority stays Q0 throughout (slices reset after sleep)\n\n");
+  printf("Pattern: brief_work -> sleep(1 tick) x 30 iterations\n");
+  printf("Expect: Q0 maintained (slices reset on sleep)\n\n");
   
   // Simulate I/O-bound behavior: short bursts with frequent sleeps
   // 30 iterations × 1 second per iteration = ~30 seconds total
@@ -38,7 +40,7 @@ main(int argc, char *argv[])
     // Check priority after wakeup
     if(getprocinfo(&info) == 0) {
       if(iter % 5 == 0) {  // Print every 5 iterations to reduce clutter
-        printf("Iteration %d: Priority=Q%d, TimeSlices=%d\n", 
+        printf("  [%02d] Queue=Q%d, Slices=%d\n", 
                iter, info.priority, info.time_slices);
       }
     }
@@ -46,24 +48,25 @@ main(int argc, char *argv[])
     // Verify we stay in high priority
     if(iter == 10 || iter == 20 || iter == 29) {
       if(getprocinfo(&info) == 0) {
-        printf("  [Checkpoint] Still at Q%d\n", info.priority);
+        printf("       >> checkpoint: Q%d <<\n", info.priority);
       }
     }
   }
   
-  printf("\n");
+  printf("\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
   if(getprocinfo(&info) == 0) {
-    printf("Final Result: Priority=Q%d, TimeSlices=%d\n", 
+    printf("RESULT: Queue=Q%d | Total Slices=%d\n", 
            info.priority, info.time_slices);
     
     if(info.priority <= 1) {
-      printf("✓ SUCCESS: Stayed in Q%d (high priority maintained!)\n", info.priority);
-      printf("  Demonstrates I/O-bound processes get preferential treatment.\n");
+      printf("STATUS: [PASS] Maintained Q%d (high priority)\n", info.priority);
+      printf("        I/O-bound behavior rewarded!\n");
     } else {
-      printf("✗ FAILED: Demoted to Q%d (should have stayed Q0/Q1)\n", info.priority);
-      printf("  Sleep/pause may not be properly resetting time slices!\n");
+      printf("STATUS: [FAIL] Dropped to Q%d (expected Q0/Q1)\n", info.priority);
+      printf("        Check sleep/pause slice reset logic.\n");
     }
   }
+  printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
   
   exit(0);
 }

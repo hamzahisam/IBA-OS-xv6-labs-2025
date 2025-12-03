@@ -10,23 +10,25 @@ main(int argc, char *argv[])
   struct procinfo info;
   volatile int dummy = 0;
   
-  printf("=== Comprehensive CPU-Bound Test ===\n");
-  printf("This process will run CPU-intensive work for ~30 seconds.\n");
-  printf("Watch priority change from Q0 -> Q1 -> Q2 -> Q3\n\n");
+  printf("--------------------------------------\n");
+  printf("       CPU-BOUND WORKLOAD TEST        \n");
+  printf("--------------------------------------\n");
+  printf("Running heavy CPU computation for ~30 sec\n");
+  printf("Observing priority demotion: Q0 -> Q1 -> Q2 -> Q3\n\n");
   
   if(getprocinfo(&info) == 0) {
-    printf("Starting: PID=%d, Priority=Q%d, TimeSlices=%d\n\n", 
+    printf("[INIT] PID: %d | Queue: Q%d | Slices: %d\n\n", 
            info.pid, info.priority, info.time_slices);
   }
   
   // Massive continuous CPU work without any yields
   // Each iteration takes significant time (multiple timer ticks)
-  printf("Running continuous computation (no sleeps, no syscalls)...\n");
-  printf("Expected demotions:\n");
-  printf("  0-2 ticks   : Q0 (initial)\n");
-  printf("  2-6 ticks   : Q1 (after first demotion)\n");
-  printf("  6-14 ticks  : Q2 (after second demotion)\n");
-  printf("  14+ ticks   : Q3 (after third demotion)\n\n");
+  printf("Executing intensive loop (pure CPU, no I/O)...\n");
+  printf("Demotion schedule:\n");
+  printf("  * Q0: 0-2 ticks (start)\n");
+  printf("  * Q1: 2-6 ticks (1st demotion)\n");
+  printf("  * Q2: 6-14 ticks (2nd demotion)\n");
+  printf("  * Q3: 14+ ticks (final level)\n\n");
   
   // Do MASSIVE amount of work - much more than purecpu
   // 500M iterations = ~5 seconds of continuous work
@@ -40,32 +42,33 @@ main(int argc, char *argv[])
     
     // Every iteration, check status
     if(getprocinfo(&info) == 0) {
-      printf("Checkpoint %d: Priority=Q%d, TimeSlices=%d\n", 
+      printf("  [%02d] Queue=Q%d, Slices=%d\n", 
              iter, info.priority, info.time_slices);
     }
     
     // Stop if we've seen enough data
     if(iter == 30) {
-      printf("\n(Continuing in background for full test...)\n");
+      printf("\n  ... continuing to completion ...\n");
     }
   }
   
   // Final check
-  printf("\n");
+  printf("\n--------------------------------------\n");
   if(getprocinfo(&info) == 0) {
-    printf("Final Result: Priority=Q%d, TimeSlices=%d\n", 
+    printf("RESULT: Queue=Q%d | Total Slices=%d\n", 
            info.priority, info.time_slices);
     
     if(info.priority == 3) {
-      printf("✓ EXCELLENT: Reached Q3 (CPU-bound category)\n");
+      printf("STATUS: [PASS] Reached lowest queue Q3\n");
     } else if(info.priority == 2) {
-      printf("✓ GOOD: Reached Q2 (mid-range demotion)\n");
+      printf("STATUS: [OK] Demoted to Q2\n");
     } else if(info.priority == 1) {
-      printf("~ PARTIAL: Only reached Q1\n");
+      printf("STATUS: [WARN] Only reached Q1\n");
     } else {
-      printf("✗ FAILED: Stayed at Q0\n");
+      printf("STATUS: [FAIL] No demotion occurred\n");
     }
   }
+  printf("--------------------------------------\n");
   
   exit(0);
 }

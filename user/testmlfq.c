@@ -9,14 +9,16 @@ main(int argc, char *argv[])
 {
   int cpid1, cpid2;
   
-  printf("=== Comprehensive Mixed Workload Test ===\n");
-  printf("Running CPU-bound and I/O-bound processes concurrently.\n");
-  printf("This shows the scheduler's fairness: CPU-bound demotes, I/O-bound stays high.\n\n");
+  printf("######################################\n");
+  printf("       MIXED WORKLOAD MLFQ TEST       \n");
+  printf("######################################\n");
+  printf("CPU-bound vs I/O-bound running concurrently.\n");
+  printf("Observing scheduler fairness in action.\n\n");
   
   // Fork CPU-bound process
   cpid1 = fork();
   if(cpid1 == 0) {
-    printf("[CPU-BOUND] Starting long computation...\n");
+    printf("<CPU> Started heavy computation...\n");
     volatile int dummy = 0;
     
     // Do lots of CPU work continuously - should demote significantly
@@ -29,14 +31,14 @@ main(int argc, char *argv[])
       // Checkpoint every 10 iterations
       struct procinfo info;
       if(iter % 10 == 0 && getprocinfo(&info) == 0) {
-        printf("[CPU-BOUND] Iteration %d: Q%d (slices=%d)\n", 
+        printf("<CPU> [%02d] Queue=Q%d, Slices=%d\n", 
                iter, info.priority, info.time_slices);
       }
     }
     
     struct procinfo final;
     if(getprocinfo(&final) == 0) {
-      printf("[CPU-BOUND] Final: Q%d (TimeSlices=%d)\n", 
+      printf("<CPU> DONE: Q%d | Slices=%d\n", 
              final.priority, final.time_slices);
     }
     exit(0);
@@ -48,7 +50,7 @@ main(int argc, char *argv[])
   // Fork I/O-bound process
   cpid2 = fork();
   if(cpid2 == 0) {
-    printf("[I/O-BOUND] Starting brief work + frequent sleeps...\n");
+    printf("<I/O> Started with frequent sleeps...\n");
     
     // Do brief work then sleep - should stay high priority
     for(int iter = 0; iter < 25; iter++) {
@@ -62,14 +64,14 @@ main(int argc, char *argv[])
       // Checkpoint every 5 iterations
       struct procinfo info;
       if(iter % 5 == 0 && getprocinfo(&info) == 0) {
-        printf("[I/O-BOUND] Iteration %d: Q%d (slices=%d)\n", 
+        printf("<I/O> [%02d] Queue=Q%d, Slices=%d\n", 
                iter, info.priority, info.time_slices);
       }
     }
     
     struct procinfo final;
     if(getprocinfo(&final) == 0) {
-      printf("[I/O-BOUND] Final: Q%d (TimeSlices=%d)\n", 
+      printf("<I/O> DONE: Q%d | Slices=%d\n", 
              final.priority, final.time_slices);
     }
     exit(0);
@@ -79,11 +81,13 @@ main(int argc, char *argv[])
   wait(0);
   wait(0);
   
-  printf("\n=== Test Complete ===\n");
-  printf("Expected Behavior:\n");
-  printf("  CPU-bound:  Demoted to Q2 or Q3 (lower priority)\n");
-  printf("  I/O-bound:  Stayed in Q0 or Q1 (higher priority)\n");
-  printf("  Result:     I/O-bound process got preference despite CPU competition\n");
+  printf("\n######################################\n");
+  printf("            TEST COMPLETE             \n");
+  printf("######################################\n");
+  printf("Expected Results:\n");
+  printf("  * CPU-bound -> Q2/Q3 (demoted)\n");
+  printf("  * I/O-bound -> Q0/Q1 (maintained)\n");
+  printf("  * I/O gets preference under load\n");
   
   exit(0);
 }

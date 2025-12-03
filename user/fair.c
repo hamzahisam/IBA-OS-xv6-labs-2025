@@ -9,11 +9,13 @@ main(int argc, char *argv[])
 {
   int cpu_pid, io_pid, mixed_pid;
   
-  printf("=== Long-Running Fairness Test (Week 3) ===\n");
-  printf("Running 3 different workloads for ~200 ticks\n");
-  printf("  1. Pure CPU-bound (should demote but get boosted)\n");
-  printf("  2. Pure I/O-bound (should stay high priority)\n");
-  printf("  3. Mixed workload\n\n");
+  printf("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n");
+  printf("@     LONG-RUNNING FAIRNESS TEST        @\n");
+  printf("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n");
+  printf("3 workloads competing for ~200 ticks:\n");
+  printf("  [1] CPU-bound (demotes, gets boosted)\n");
+  printf("  [2] I/O-bound (stays high priority)\n");
+  printf("  [3] Mixed (alternating pattern)\n\n");
   
   // Process 1: Pure CPU-bound
   cpu_pid = fork();
@@ -23,7 +25,7 @@ main(int argc, char *argv[])
     int boost_count = 0;
     int prev_priority = 0;
     
-    printf("[CPU-BOUND] Starting...\n");
+    printf("<CPU> Launched\n");
     
     for(int iter = 0; iter < 80; iter++) {
       // Heavy computation
@@ -36,25 +38,25 @@ main(int argc, char *argv[])
         // Detect boost (priority decreased from previous)
         if(info.priority < prev_priority) {
           boost_count++;
-          printf("[CPU-BOUND] BOOST #%d detected at tick %d (Q%d->Q%d)\n", 
+          printf("<CPU> ++ BOOST #%d @ T%d (Q%d-->Q%d)\n", 
                  boost_count, uptime(), prev_priority, info.priority);
         }
         prev_priority = info.priority;
         
         if(iter % 20 == 0) {
-          printf("[CPU-BOUND] Tick %d: Q%d (slices=%d)\n", 
+          printf("<CPU> T%d: Q%d slices=%d\n", 
                  uptime(), info.priority, info.time_slices);
         }
       }
     }
     
     if(getprocinfo(&info) == 0) {
-      printf("[CPU-BOUND] FINAL: Q%d, %d boosts detected\n", 
+      printf("<CPU> END: Q%d | boosts=%d\n", 
              info.priority, boost_count);
       if(boost_count >= 1) {
-        printf("[CPU-BOUND] ✓ Received at least one boost!\n");
+        printf("<CPU> [PASS] Got boosted\n");
       } else {
-        printf("[CPU-BOUND] ✗ No boosts detected (problem!)\n");
+        printf("<CPU> [FAIL] No boosts seen\n");
       }
     }
     exit(0);
@@ -68,7 +70,7 @@ main(int argc, char *argv[])
     struct procinfo info;
     volatile int dummy = 0;
     
-    printf("[I/O-BOUND] Starting...\n");
+    printf("<I/O> Launched\n");
     
     for(int iter = 0; iter < 100; iter++) {
       // Brief work
@@ -80,15 +82,15 @@ main(int argc, char *argv[])
       pause(2);
       
       if(iter % 25 == 0 && getprocinfo(&info) == 0) {
-        printf("[I/O-BOUND] Tick %d: Q%d (slices=%d)\n", 
+        printf("<I/O> T%d: Q%d slices=%d\n", 
                uptime(), info.priority, info.time_slices);
       }
     }
     
     if(getprocinfo(&info) == 0) {
-      printf("[I/O-BOUND] FINAL: Q%d\n", info.priority);
+      printf("<I/O> END: Q%d\n", info.priority);
       if(info.priority <= 1) {
-        printf("[I/O-BOUND] ✓ Maintained high priority\n");
+        printf("<I/O> [PASS] Stayed high priority\n");
       }
     }
     exit(0);
@@ -102,7 +104,7 @@ main(int argc, char *argv[])
     struct procinfo info;
     volatile int dummy = 0;
     
-    printf("[MIXED] Starting...\n");
+    printf("<MIX> Launched\n");
     
     for(int iter = 0; iter < 50; iter++) {
       // Alternate: CPU burst then sleep
@@ -114,29 +116,31 @@ main(int argc, char *argv[])
       pause(3);
       
       if(iter % 15 == 0 && getprocinfo(&info) == 0) {
-        printf("[MIXED] Tick %d: Q%d (slices=%d)\n", 
+        printf("<MIX> T%d: Q%d slices=%d\n", 
                uptime(), info.priority, info.time_slices);
       }
     }
     
     if(getprocinfo(&info) == 0) {
-      printf("[MIXED] FINAL: Q%d\n", info.priority);
+      printf("<MIX> END: Q%d\n", info.priority);
     }
     exit(0);
   }
   
   // Parent waits
-  printf("\n[Parent] All processes running...\n");
+  printf("\n[Parent] Processes running...\n");
   wait(0);
   wait(0);
   wait(0);
   
-  printf("\n=== Fairness Test Complete ===\n");
-  printf("All three workloads completed successfully!\n");
-  printf("Expected results:\n");
-  printf("  - CPU-bound: Experienced boosts (no starvation)\n");
-  printf("  - I/O-bound: Stayed in high priority queues\n");
-  printf("  - Mixed: Balanced between Q1-Q2\n");
+  printf("\n@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n");
+  printf("@         FAIRNESS TEST DONE            @\n");
+  printf("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n");
+  printf("All workloads finished.\n");
+  printf("Expected:\n");
+  printf("  * CPU-bound: Got boosts (no starvation)\n");
+  printf("  * I/O-bound: Stayed Q0/Q1\n");
+  printf("  * Mixed: Balanced Q1-Q2\n");
   
   exit(0);
 }

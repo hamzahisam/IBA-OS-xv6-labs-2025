@@ -9,15 +9,17 @@ main(int argc, char *argv[])
   struct procinfo info;
   volatile int dummy = 0;
   
-  printf("\n=== Pure CPU-Bound Test ===\n");
+  printf("\n***********************************\n");
+  printf("*     PURE CPU-BOUND TEST         *\n");
+  printf("***********************************\n");
   
   if(getprocinfo(&info) == 0) {
-    printf("Starting: PID=%d, Q%d, slices=%d\n\n", 
+    printf("[INIT] PID: %d | Queue: Q%d | Slices: %d\n\n", 
            info.pid, info.priority, info.time_slices);
   }
   
-  printf("Running continuous CPU work (no interruptions)...\n");
-  printf("This will take several seconds...\n\n");
+  printf("Executing continuous CPU work...\n");
+  printf("(This takes several seconds)\n\n");
   
   // Do MASSIVE amount of work without any syscalls
   // Increased significantly to trigger multiple demotions
@@ -30,24 +32,25 @@ main(int argc, char *argv[])
     }
   }
   
-  printf("Work complete! Checking final state...\n\n");
+  printf("...done! Checking results.\n\n");
   
   if(getprocinfo(&info) == 0) {
-    printf("Final: PID=%d, Q%d, slices=%d\n", 
+    printf("[FINAL] PID: %d | Queue: Q%d | Slices: %d\n", 
            info.pid, info.priority, info.time_slices);
-    printf("\nExpected behavior:\n");
-    printf("  - Should have used many timer ticks\n");
-    printf("  - Should have demoted through queues\n");
-    printf("  - Should be at Q3 (or Q2/Q3)\n\n");
+    printf("\nExpected:\n");
+    printf("  * Many timer ticks consumed\n");
+    printf("  * Demoted through queues\n");
+    printf("  * End at Q2 or Q3\n\n");
     
     if(info.priority >= 2) {
-      printf("✓ SUCCESS: Demoted to Q%d\n", info.priority);
+      printf("STATUS: [PASS] Demoted to Q%d\n", info.priority);
     } else if(info.priority == 1) {
-      printf("~ PARTIAL: Only reached Q1 (expected Q2 or Q3)\n");
+      printf("STATUS: [WARN] Only reached Q1\n");
     } else {
-      printf("✗ FAILED: Still at Q0 (no demotion occurred)\n");
+      printf("STATUS: [FAIL] Stuck at Q0\n");
     }
   }
+  printf("***********************************\n");
   
   exit(0);
 }

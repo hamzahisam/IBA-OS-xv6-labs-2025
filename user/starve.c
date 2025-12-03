@@ -10,10 +10,12 @@ main(int argc, char *argv[])
   int pids[3];
   int num_procs = 3;
   
-  printf("=== Starvation Prevention Test (Week 3) ===\n");
-  printf("Testing automatic priority boosting every 100 ticks\n");
-  printf("Running %d CPU-bound processes concurrently\n", num_procs);
-  printf("All processes should get CPU time due to periodic boosting\n\n");
+  printf("////////////////////////////////////////////\n");
+  printf("//    STARVATION PREVENTION TEST          //\n");
+  printf("////////////////////////////////////////////\n");
+  printf("Auto-boost every 100 ticks\n");
+  printf("Spawning %d CPU-bound processes\n", num_procs);
+  printf("All should get CPU via periodic boosting\n\n");
   
   // Fork multiple CPU-bound processes
   for(int i = 0; i < num_procs; i++) {
@@ -25,7 +27,7 @@ main(int argc, char *argv[])
       volatile int dummy = 0;
       int my_id = i;
       
-      printf("[Process %d] Started (PID=%d)\n", my_id, getpid());
+      printf("  P%d | PID %d | Started\n", my_id, getpid());
       
       // Run for extended time to see multiple boost cycles
       // ~150 ticks = 1.5 boost intervals
@@ -39,13 +41,13 @@ main(int argc, char *argv[])
         // Check status periodically
         if(iter % 15 == 0 && getprocinfo(&info) == 0) {
           int current_ticks = uptime();
-          printf("[Process %d] Tick %d: Q%d (slices=%d)\n", 
+          printf("  P%d | T%d | Q%d | slices=%d\n", 
                  my_id, current_ticks, info.priority, info.time_slices);
         }
       }
       
       if(getprocinfo(&info) == 0) {
-        printf("[Process %d] COMPLETED at tick %d: Final Q%d\n", 
+        printf("  P%d | DONE @ T%d | Final: Q%d\n", 
                my_id, uptime(), info.priority);
       }
       
@@ -57,18 +59,20 @@ main(int argc, char *argv[])
   }
   
   // Parent waits for all children
-  printf("\n[Parent] Waiting for all processes to complete...\n");
+  printf("\n[PARENT] Waiting for completion...\n");
   for(int i = 0; i < num_procs; i++) {
     wait(0);
-    printf("[Parent] Process %d finished\n", i);
+    printf("[PARENT] P%d exited\n", i);
   }
   
-  printf("\n=== Starvation Test Complete ===\n");
-  printf("Analysis:\n");
-  printf("  - All processes should have completed\n");
-  printf("  - Processes should have been boosted to Q0 every ~100 ticks\n");
-  printf("  - Even low-priority processes got CPU time\n");
-  printf("  - No process was starved!\n");
+  printf("\n////////////////////////////////////////////\n");
+  printf("//         TEST COMPLETE                 //\n");
+  printf("////////////////////////////////////////////\n");
+  printf("Summary:\n");
+  printf("  * All processes completed\n");
+  printf("  * Boost to Q0 every ~100 ticks\n");
+  printf("  * Low-priority got CPU time\n");
+  printf("  * No starvation occurred\n");
   
   exit(0);
 }

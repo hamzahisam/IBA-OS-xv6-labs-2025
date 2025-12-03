@@ -125,10 +125,12 @@ sys_getprocinfo(void)
     int time_slices;
   } info;
   
+  acquire(&p->lock);
   info.pid = p->pid;
   info.state = p->state;
   info.priority = p->priority;
   info.time_slices = p->time_slices;
+  release(&p->lock);
   
   if(copyout(p->pagetable, addr, (char *)&info, sizeof(info)) < 0)
     return -1;

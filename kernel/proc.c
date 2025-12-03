@@ -19,10 +19,10 @@ struct spinlock pid_lock;
 #define NMLFQ 4  // Number of priority queues (0=highest, 3=lowest)
 // Time slices per queue - adjusted for xv6's timer tick rate (~100ms/tick)
 // Q0: 2 ticks = ~200ms, Q1: 4 ticks = ~400ms, Q2: 8 ticks = ~800ms, Q3: 16 ticks = ~1.6s
-#define BOOST_INTERVAL 30 // Boost all processes every 100 ticks
+#define BOOST_INTERVAL 100 // Boost all processes every 100 ticks
 uint64 last_boost_time = 0;
 
-int mlfq_time_quanta[NMLFQ] = {2, 4, 8, 16};  
+int mlfq_time_quanta[NMLFQ] = {3, 6, 12, 24};  
 struct spinlock mlfq_lock;
 
 extern void forkret(void);
