@@ -19,11 +19,54 @@ struct spinlock pid_lock;
 #define NMLFQ 4  // Number of priority queues (0=highest, 3=lowest)
 // Time slices per queue - adjusted for xv6's timer tick rate (~100ms/tick)
 // Q0: 2 ticks = ~200ms, Q1: 4 ticks = ~400ms, Q2: 8 ticks = ~800ms, Q3: 16 ticks = ~1.6s
-#define BOOST_INTERVAL 100 // Boost all processes every 100 ticks
+#define BOOST_INTERVAL 50 // Boost all processes every 50 ticks
 uint64 last_boost_time = 0;
 
-int mlfq_time_quanta[NMLFQ] = {3, 6, 12, 24};  
+int mlfq_time_quanta[NMLFQ] = {2, 4, 8, 16};
+
+// MLFQ queue heads and tails for each priority level
+struct proc *mlfq_heads[NMLFQ];  // Head of each queue
+struct proc *mlfq_tails[NMLFQ];  // Tail of each queue
 struct spinlock mlfq_lock;
+
+
+
+// Enqueue a process to its priority queue (must hold mlfq_lock)
+static void
+mlfq_enqueue(struct proc *p)
+{
+  int pri = p->priority;
+  p->queue_next = 0;
+  
+  if(mlfq_tails[pri] == 0) {
+    // Queue is empty
+    mlfq_heads[pri] = p;
+    mlfq_tails[pri] = p;
+  } else {
+    // Add to tail
+    mlfq_tails[pri]->queue_next = p;
+    mlfq_tails[pri] = p;
+  }
+}
+
+// Dequeue and return the head process from a priority queue (must hold mlfq_lock)
+// Returns 0 if queue is empty
+static struct proc*
+mlfq_dequeue(int priority)
+{
+  struct proc *p = mlfq_heads[priority];
+  
+  if(p == 0)
+    return 0;
+  
+  mlfq_heads[priority] = p->queue_next;
+  if(mlfq_heads[priority] == 0) {
+    // Queue is now empty
+    mlfq_tails[priority] = 0;
+  }
+  p->queue_next = 0;
+  return p;
+}
 
 extern void forkret(void);
 static void freeproc(struct proc *p);
@@ -62,6 +105,12 @@ procinit(void)
   initlock(&pid_lock, "nextpid");
   initlock(&wait_lock, "wait_lock");
   initlock(&mlfq_lock, "mlfq");
+  
+  // Initialize MLFQ queues
+  for(int i = 0; i < NMLFQ; i++) {
+    mlfq_heads[i] = 0;
+    mlfq_tails[i] = 0;
+  }
   
   for(p = proc; p < &proc[NPROC]; p++) {
       initlock(&p->lock, "proc");
@@ -161,7 +210,7 @@ found:
   // Initialize MLFQ fields - new processes start at highest priority
   p->priority = 0;
   p->time_slices = 0;
-  p->arrival_time = 0;
+  p->queue_next = 0;
 
   return p;
 }
@@ -244,6 +293,11 @@ userinit(void)
   p->cwd = namei("/");
 
   p->state = RUNNABLE;
+  
+  // Enqueue to MLFQ
+  acquire(&mlfq_lock);
+  mlfq_enqueue(p);
+  release(&mlfq_lock);
 
   release(&p->lock);
 }
@@ -317,6 +371,12 @@ kfork(void)
 
   acquire(&np->lock);
   np->state = RUNNABLE;
+  
+  // Enqueue to MLFQ
+  acquire(&mlfq_lock);
+  mlfq_enqueue(np);
+  release(&mlfq_lock);
+  
   release(&np->lock);
 
   return pid;
@@ -435,19 +495,39 @@ void
 boost_all_priorities(void)
 {
   struct proc *p;
-  int boosted_count = 0;
   
+  // First pass: Reset priorities for all active processes
+  // (acquire p->lock first to maintain lock ordering)
   for(p = proc; p < &proc[NPROC]; p++) {
     acquire(&p->lock);
     if(p->state == RUNNABLE || p->state == RUNNING || p->state == SLEEPING) {
-      if(p->priority != 0 || p->time_slices != 0) {
-        boosted_count++;
-      }
       p->priority = 0;
       p->time_slices = 0;
+      p->queue_next = 0;
     }
     release(&p->lock);
   }
+  
+  // Second pass: Rebuild queues with only RUNNABLE processes
+  acquire(&mlfq_lock);
+  
+  // Clear all queues
+  for(int i = 0; i < NMLFQ; i++) {
+    mlfq_heads[i] = 0;
+    mlfq_tails[i] = 0;
+  }
+  
+  // Re-enqueue all RUNNABLE processes to queue 0
+  for(p = proc; p < &proc[NPROC]; p++) {
+    acquire(&p->lock);
+    if(p->state == RUNNABLE) {
+      p->queue_next = 0;
+      mlfq_enqueue(p);
+    }
+    release(&p->lock);
+  }
+  
+  release(&mlfq_lock);
 }
 
 // Per-CPU process scheduler.
@@ -486,27 +566,32 @@ scheduler(void)
 
     int found = 0;
     
-    // MLFQ Scheduling: Scan priority queues from highest (0) to lowest (3)
-    for(int priority = 0; priority < NMLFQ && !found; priority++) {
-      for(p = proc; p < &proc[NPROC]; p++) {
+    // MLFQ Scheduling: Dequeue from highest priority non-empty queue
+    acquire(&mlfq_lock);
+    for(int priority = 0; priority < NMLFQ; priority++) {
+      p = mlfq_dequeue(priority);
+      if(p != 0) {
+        release(&mlfq_lock);
+        
         acquire(&p->lock);
-        if(p->state == RUNNABLE && p->priority == priority) {
-          // Switch to chosen process.  It is the process's job
-          // to release its lock and then reacquire it
-          // before jumping back to us.
+        if(p->state == RUNNABLE) {
+          // Switch to chosen process
           p->state = RUNNING;
           c->proc = p;
           swtch(&c->context, &p->context);
 
           // Process is done running for now.
-          // It should have changed its p->state before coming back.
           c->proc = 0;
           found = 1;
-          release(&p->lock);
-          break;  // Found a process, restart from highest priority
+        } else {
+          // Process state changed (e.g., killed), skip it
         }
         release(&p->lock);
+        break;  // Restart from highest priority
       }
+    }
+    if(!found) {
+      release(&mlfq_lock);
     }
     
     if(found == 0) {
@@ -550,6 +635,12 @@ yield(void)
   struct proc *p = myproc();
   acquire(&p->lock);
   p->state = RUNNABLE;
+  
+  // Enqueue to MLFQ
+  acquire(&mlfq_lock);
+  mlfq_enqueue(p);
+  release(&mlfq_lock);
+  
   sched();
   release(&p->lock);
 }
@@ -634,6 +725,11 @@ wakeup(void *chan)
       acquire(&p->lock);
       if(p->state == SLEEPING && p->chan == chan) {
         p->state = RUNNABLE;
+        
+        // Enqueue to MLFQ
+        acquire(&mlfq_lock);
+        mlfq_enqueue(p);
+        release(&mlfq_lock);
       }
       release(&p->lock);
     }
@@ -655,6 +751,11 @@ kkill(int pid)
       if(p->state == SLEEPING){
         // Wake process from sleep().
         p->state = RUNNABLE;
+        
+        // Enqueue to MLFQ
+        acquire(&mlfq_lock);
+        mlfq_enqueue(p);
+        release(&mlfq_lock);
       }
       release(&p->lock);
       return 0;

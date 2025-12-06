@@ -18,6 +18,7 @@ struct context {
   uint64 s11;
 };
 
+
 // Per-CPU state.
 struct cpu {
   struct proc *proc;          // The process running on this cpu, or null.
@@ -108,5 +109,5 @@ struct proc {
   // MLFQ scheduler fields
   int priority;                // Current priority queue (0-3, 0 is highest)
   int time_slices;             // Time slices used in current priority level
-  uint64 arrival_time;         // Time when process entered current queue
+  struct proc *queue_next;     // Next process in MLFQ queue (for linked-list)
 };
