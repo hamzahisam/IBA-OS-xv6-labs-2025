@@ -18,11 +18,11 @@ struct spinlock pid_lock;
 // MLFQ scheduler data structures
 #define NMLFQ 4  // Number of priority queues (0=highest, 3=lowest)
 // Time slices per queue - adjusted for xv6's timer tick rate (~100ms/tick)
-// Q0: 2 ticks = ~200ms, Q1: 4 ticks = ~400ms, Q2: 8 ticks = ~800ms, Q3: 16 ticks = ~1.6s
-#define BOOST_INTERVAL 50 // Boost all processes every 50 ticks
+// Q0: 3 ticks = ~300ms, Q1: 6 ticks = ~600ms, Q2: 12 ticks = ~1.2s, Q3: 24 ticks = ~2.4s
+#define BOOST_INTERVAL 100 // Boost all processes every 100 ticks
 uint64 last_boost_time = 0;
 
-int mlfq_time_quanta[NMLFQ] = {2, 4, 8, 16};
+int mlfq_time_quanta[NMLFQ] = {3, 6, 12, 24};
 
 // MLFQ queue heads and tails for each priority level
 struct proc *mlfq_heads[NMLFQ];  // Head of each queue
